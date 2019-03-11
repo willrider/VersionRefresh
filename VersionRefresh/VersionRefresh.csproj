@@ -25,14 +25,20 @@
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <DebugType>pdbonly</DebugType>
+    <DebugType>none</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
+  <PropertyGroup>
+    <ApplicationIcon>Mite.ico</ApplicationIcon>
+  </PropertyGroup>
   <ItemGroup>
+    <Reference Include="DgvFilterPopup">
+      <HintPath>..\..\..\resources\DgvFilterPopup.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
@@ -79,5 +85,23 @@
   <ItemGroup>
     <None Include="App.config" />
   </ItemGroup>
+  <ItemGroup>
+    <Content Include="Mite.ico" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <UsingTask TaskName="Babel" AssemblyName="Babel.Build, Version=9.1.0.0, Culture=neutral,
+             PublicKeyToken=138d17b5bd621ab7" />
+  <Target Name="AfterBuild">
+    <Babel InputFile="$(TargetPath)"
+      OutputFile="$(TargetPath)"
+ObfuscateTypes="true"
+ObfuscateEvents="true"
+ObfuscateMethods="true"
+ObfuscateProperties="true"
+ObfuscateFields="true"
+VirtualFunctions="true"
+FlattenNamespaces="true"
+StringEncryption="hash"
+/>
+</Target>
 </Project>
