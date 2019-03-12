@@ -25,7 +25,7 @@ namespace VersionRefresh
         DataTable tmpDT = new DataTable();
         DataTable Except = new DataTable();
         DataTable LostnFound = new DataTable();
-        DataTable myPSCVer = new DataTable();
+        //DataTable myPSCVer = new DataTable();
 
         public Form1()
         {
@@ -48,14 +48,14 @@ namespace VersionRefresh
 
             RefreshData("RXCRMREF.tblPharmacy", GetRealSAPConnectionString(), SAP);
             RefreshData("RXCRMREF.tblCustApp", GetRealSAPConnectionString(), CustApp);
-            RefreshData("PSC.ProScriptConnectVersionDetails", GetRealSAPConnectionString(), PSCVersions);
+            RefreshData("RXCRMDB.PSC.VersionView", GetRealSAPConnectionString(), PSCVersions);
             RefreshData("RXCRMREF.tblServicesPharmacy", GetRealSAPConnectionString(), EquiCards);
-            RefreshData("dbo.PSCVersions", GetSAPConnectionString(), myPSCVer);
+            //RefreshData("dbo.PSCVersions", GetSAPConnectionString(), myPSCVer);
             RefreshData("dbo.Exceptions", GetSAPConnectionString(), Except);
             RefreshData("dbo.LostnFound", GetSAPConnectionString(), LostnFound);
 
             PopuplateEquip();
-            PopuplatePSCVersions();
+            //PopuplatePSCVersions();
             PopuplateSAPmain();
             PopulateExce();
 
@@ -81,70 +81,75 @@ namespace VersionRefresh
             {
                 var tmpRow = new Object[6];
 
-                List<DataRow> foundRows = new List<DataRow>();
-                String expression;
-                expression = "PharmacyGuid = '" + row.ItemArray[0].ToString().ToUpper() + "'";
-                foundRows = SAP.Select(expression).ToList();
+                //List<DataRow> foundRows = new List<DataRow>();
+                //String expression;
 
-                if (foundRows.Count > 0)
+
+                tmpRow[0] = row.ItemArray[0]; //RXID
+                tmpRow[1] = row.ItemArray[5];
+                tmpRow[2] = row.ItemArray[8];
+
+                if (Convert.ToInt32(row.ItemArray[5]) == 5)
                 {
-                    tmpRow[0] = foundRows[0].ItemArray[0]; //RXID
+                    continue;
+                }
 
-                    tmpRow[1] = row.ItemArray[1];
-                    tmpRow[2] = row.ItemArray[3];
+                List<DataRow> foundRowsInner = new List<DataRow>();
+                String expressionInner;
+                expressionInner = "RXID = '" + tmpRow[0].ToString() + "' AND VersionTypeId = '" +
+                                  tmpRow[1].ToString() + "'";
+                foundRowsInner = Except.Select(expressionInner).ToList();
 
-                    if (Convert.ToInt32(row.ItemArray[1]) == 5)
-                    {
-                        continue;
-                    }
+                if (foundRowsInner.Count < 1)
+                {
+                    tmpRow[3] = row.ItemArray[8];
+                    tmpRow[4] = false;
+                    tmpRow[5] = "";
+                    tmpDT.Rows.Add(tmpRow);
 
-                    List<DataRow> foundRowsInner = new List<DataRow>();
-                    String expressionInner;
-                    expressionInner = "RXID = '" + tmpRow[0].ToString() + "' AND VersionTypeId = '" +
-                                         tmpRow[1].ToString() + "'";
-                    foundRowsInner = Except.Select(expressionInner).ToList();
-
-                    if (foundRowsInner.Count < 1)
-                    {
-                        //tmpRow[3] = foundRowsInner[0].ItemArray[3];
-                        //tmpRow[4] = foundRowsInner[0].ItemArray[4];
-                        //tmpRow[5] = foundRowsInner[0].ItemArray[5];
-                        //tmpDT.Rows.Add(tmpRow);
-                        //break;
-                        tmpRow[3] = row.ItemArray[3];
-                        tmpRow[4] = false;
-                        tmpRow[5] = "";
-                        tmpDT.Rows.Add(tmpRow);
-
-                    }
-                    //else
-                    //{
-                    //    tmpRow[3] = row.ItemArray[3];
-                    //    tmpRow[4] = false;
-                    //    tmpRow[5] = "";
-                    //    tmpDT.Rows.Add(tmpRow);
-                    //}
                 }
                 else
                 {
 
-                    GuidsList.Add(row.ItemArray[0].ToString().ToUpper());
+                    if (Convert.ToBoolean(foundRowsInner[0].ItemArray[4]) == false)
+                    {
+                        tmpRow[3] = row.ItemArray[8];
+                        tmpRow[4] = false;
+                        tmpRow[5] = foundRowsInner[0].ItemArray[5];
+                        tmpDT.Rows.Add(tmpRow);
+                    }
+                    else if (Convert.ToBoolean(foundRowsInner[0].ItemArray[4]) == true)
+                    {
+                        tmpRow[3] = foundRowsInner[0].ItemArray[3];
+                        tmpRow[4] = true;
+                        tmpRow[5] = foundRowsInner[0].ItemArray[5];
+                        tmpDT.Rows.Add(tmpRow);
+                    }
                 }
             }
 
-            GuidsList = GuidsList.Distinct().ToList();
 
-            foreach (string guid in GuidsList)
+//foreach (string guid in GuidsList)
+//            {
+//                LostnFound.Rows.Add(guid);
+//            }
+
+            using (SqlConnection con = new SqlConnection(GetSAPConnectionString()))
             {
-                LostnFound.Rows.Add(guid);
+                con.Open();
+                string sqlTrunc = "dbo.TruncateExceptions";
+                SqlCommand cmd = new SqlCommand(sqlTrunc, con);
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.ExecuteNonQuery();
+                con.Close();
             }
-
 
             PushData(GetSAPConnectionString(), tmpDT, "Exceptions");
             PushData(GetSAPConnectionString(), LostnFound, "LostnFound");
         }
+    
 
-        public void PopuplateSAPmain()
+    public void PopuplateSAPmain()
         {
             SAP.Columns.RemoveAt(4);
             SAP.Columns.RemoveAt(8);
@@ -236,13 +241,10 @@ namespace VersionRefresh
             PushData(GetSAPConnectionString(), EquiCards, "Equipment");
         }
 
-        public void PopuplatePSCVersions()
-        {
-            PSCVersions.Columns.RemoveAt(3);
-            PSCVersions.Columns.RemoveAt(4);
-            PSCVersions.Columns.RemoveAt(4);
-            PushData(GetSAPConnectionString(), PSCVersions, "PSCVersions");
-        }
+        //public void PopuplatePSCVersions()
+        //{
+        //    PushData(GetSAPConnectionString(), PSCVersions, "PSCVersions");
+        //}
 
         public string GetSAPConnectionString()
         {
